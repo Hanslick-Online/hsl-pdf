@@ -27,10 +27,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ANT_OPTS: -Xmx6g
-      TYPESENSE_HOST: typesense.acdh-dev.oeaw.ac.at
-      TYPESENSE_PORT: 443
-      TYPESENSE_PROTOCOL: https
-      TYPESENSE_API_KEY: ${{secrets.TYPESENSE_API_KEY}}
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository }}
     steps:
@@ -72,7 +68,7 @@ jobs:
               done
           done
 
-               - name: Compile LaTeX to PDF (keep only PDFs)
+      - name: Compile LaTeX to PDF (keep only PDFs)
         run: |
           set -euo pipefail
           mkdir -p tmp/latex-out html/pdf
