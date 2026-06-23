@@ -57,7 +57,6 @@ jobs:
       - name: Transform XML-TEI to LaTeX
         run: |
           set -euo pipefail
-          chmod +x build_app/pyscripts/xml2latex.py
           mkdir -p tmp html
           for dir in doc ; do # traktat vms critics doc; do
             find "data/$dir/editions" -type f -name "*.xml" -print0 | \
