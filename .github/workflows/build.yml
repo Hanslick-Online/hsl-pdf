@@ -61,7 +61,7 @@ jobs:
           for dir in doc ; do # traktat vms critics doc; do
             find "data/$dir/editions" -type f -name "*.xml" -print0 | \
               while IFS= read -r -d '' filepath; do
-                base="${filepath##*/}"
+                base="${dir:0:1}_${filepath##*/}"
                 out="tmp/${base%.xml}.tex"
                 ./pyscripts/xml2latex.py "$filepath" "$out"
               done
