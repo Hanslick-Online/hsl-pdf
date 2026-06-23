@@ -58,7 +58,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p tmp html
-          for dir in doc ; do  traktat vms critics doc; do
+          for dir in doc traktat vms critics doc; do
             find "data/$dir/editions" -type f -name "*.xml" -print0 | \
               while IFS= read -r -d '' filepath; do
                 base="${dir:0:1}__${filepath##*/}"
