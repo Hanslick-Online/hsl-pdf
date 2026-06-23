@@ -1,0 +1,104 @@
+# Simple workflow for deploying static content to GitHub Pages
+name: Deploy static content to Pages
+
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  packages: write
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Single deploy job since we're just deploying
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    env:
+      ANT_OPTS: -Xmx6g
+      TYPESENSE_HOST: typesense.acdh-dev.oeaw.ac.at
+      TYPESENSE_PORT: 443
+      TYPESENSE_PROTOCOL: https
+      TYPESENSE_API_KEY: ${{secrets.TYPESENSE_API_KEY}}
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: set up uv (Python)
+        uses: astral-sh/setup-uv@v8.1.0 
+      - name: Install Python dependencies
+        run: |
+          uv sync
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
+      - name: Fetch the data
+        run: ./shellscripts/fetch_data.sh
+      - name: Install TeX Live (minimal set for xelatex)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            texlive-xetex \
+            texlive-latex-recommended \
+            texlive-latex-extra \
+            texlive-plain-generic \
+            texlive-fonts-recommended \
+            texlive-lang-german \
+            fonts-noto-core
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+
+      - name: Transform XML-TEI to LaTeX
+        run: |
+          set -euo pipefail
+          chmod +x build_app/python/xml2latex.py
+          mkdir -p tmp html
+          for dir in traktat vms critics doc; do
+            find "data/$dir/editions" -type f -name "*.xml" -print0 | \
+              while IFS= read -r -d '' filepath; do
+                base="${filepath##*/}"
+                out="tmp/${base%.xml}.tex"
+                ./pyscripts/xml2latex.py "$filepath" "$out"
+              done
+          done
+
+               - name: Compile LaTeX to PDF (keep only PDFs)
+        run: |
+          set -euo pipefail
+          mkdir -p tmp/latex-out html/pdf
+          find tmp -type f -name "*.tex" -print0 | \
+            while IFS= read -r -d '' tex; do
+              xelatex -interaction=nonstopmode -halt-on-error -file-line-error \
+                -output-directory="tmp/latex-out" "$tex"
+            done
+          find tmp/latex-out -type f -name "*.pdf" -exec mv -t html {} +
+          rm -rf tmp/tex tmp/latex-out
+
+      - name: Free disk space before Pages packaging
+        run: |
+          df -h
+          df -i
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android || true
+          rm -rf ~/.cache/pip ~/.cache || true
+          df -h
+          df -i
+
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v6
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: './html'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
